@@ -1,8 +1,9 @@
-import { getRepository } from 'typeorm';
+import { getCustomRepository, getRepository } from 'typeorm';
 
 import AppError from '../errors/AppError';
 import Category from '../models/Category';
 import Transaction from '../models/Transaction';
+import TransactionsRepository from '../repositories/TransactionsRepository';
 
 interface Request {
   title: string;
@@ -22,6 +23,14 @@ class CreateTransactionService {
       throw new AppError('Invalid input, check if all fields are filled.');
     }
 
+    const transactionsRepository = getCustomRepository(TransactionsRepository);
+
+    const { total } = await transactionsRepository.getBalance();
+
+    if (type === 'outcome' && total < value) {
+      throw new AppError('Not enough balance.');
+    }
+
     const categoryRepository = getRepository(Category);
 
     let existentCategory = await categoryRepository.findOne({
@@ -33,8 +42,9 @@ class CreateTransactionService {
       const newCategory = categoryRepository.create({ title: category });
       existentCategory = await categoryRepository.save(newCategory);
     }
+    // const newCategory = categoryRepository.create({ title: category });
+    // const existentCategory = await categoryRepository.save(newCategory);
 
-    const transactionsRepository = getRepository(Transaction);
     const newTransaction = transactionsRepository.create({
       title,
       value,
